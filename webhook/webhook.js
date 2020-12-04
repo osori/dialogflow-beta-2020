@@ -29,6 +29,11 @@ async function getToken () {
   }
 
   const serverReturn = await fetch(ENDPOINT_URL + '/login',request)
+
+  if (!serverReturn.ok) {
+    throw "Login failed"
+  }
+
   const serverResponse = await serverReturn.json()
   token = serverResponse.token
 
@@ -46,19 +51,27 @@ app.post('/', express.json(), (req, res) => {
 
   async function login () {
     // You need to set this from `username` entity that you declare in DialogFlow
-    username = null
+    username = agent.parameters.username;
     // You need to set this from password entity that you declare in DialogFlow
-    password = null
-    await getToken()
-    
-    agent.add(token)
+    password = agent.parameters.password;
+
+    try {
+      await getToken()
+    } catch {
+      // login fail
+      agent.add('Sorry, there was a problem logging you in.');
+      return;
+    }
+
+    // login success
+    agent.add("Welcome to WiscShop, " + username + "!");
   }
 
 
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   // You will need to declare this `Login` content in DialogFlow to make this work
-  intentMap.set('Login', login) 
+  intentMap.set('LOGIN', login) 
   agent.handleRequest(intentMap)
 })
 
