@@ -90,11 +90,32 @@ app.post('/', express.json(), (req, res) => {
     agent.add("Welcome to WiscShop, " + username + "!");
   }
 
+  async function getCategoryList () {
+    let request = {
+      method: 'GET',
+      redirect: 'follow'
+    }
+
+    const serverReturn = await fetch(ENDPOINT_URL + '/categories', request);
+
+    if (!serverReturn.ok) {
+      agent.add("Sorry, there was a problem getting the list of categories.")
+      throw "Error while getting category list"
+    }  
+
+    const serverResponse = await serverReturn.json()
+    let categories = serverResponse.categories;
+
+    agent.add("We currently offer " + categories.length + " types of items: ");
+    // use the Oxford Comma style to join categories
+    agent.add(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
+  }
 
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   // You will need to declare this `Login` content in DialogFlow to make this work
   intentMap.set('LOGIN', login) 
+  intentMap.set('CATEGORY_LIST', getCategoryList) 
   agent.handleRequest(intentMap)
 })
 
