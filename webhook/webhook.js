@@ -40,6 +40,29 @@ async function getToken () {
   return token;
 }
 
+// function that navigate the user to a specific page
+async function navigateTo (page) {
+  let request = {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json',
+              'x-access-token': token },
+    body: JSON.stringify({ page: '/' + username + page,
+                           dialogflowUpdated: true,
+                           back: false}),
+    redirect: 'follow'
+  }
+
+  const serverReturn = await fetch(ENDPOINT_URL + '/application', request);
+
+  if (!serverReturn.ok) {
+    throw "Error while navigating user"
+  }
+
+  const serverResponse = await serverReturn.json()
+
+  return serverResponse;
+}
+
 app.get('/', (req, res) => res.send('online'))
 app.post('/', express.json(), (req, res) => {
   const agent = new WebhookClient({ request: req, response: res })
