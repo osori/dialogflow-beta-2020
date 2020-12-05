@@ -164,11 +164,19 @@ app.post('/', express.json(), (req, res) => {
     const serverResponse = await serverReturn.json()
     let products = serverResponse.products;
 
+    if (!products.length) {
+      agent.add("Your cart is empty.");
+      return;
+    }
+
     agent.add("There are " + products.length + " products in your cart: ");
     // use the Oxford Comma style to join tags
+    let totalPrice = 0;
     products.forEach( (item, idx) => {
       agent.add(idx + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
+      totalPrice += item.price
     })
+    agent.add("That is a total of $" + totalPrice + ".")
   }
 
   let intentMap = new Map()
