@@ -147,12 +147,12 @@ app.post('/', express.json(), (req, res) => {
       redirect: 'follow'
     }
 
-    const serverReturn = await fetch(ENDPOINT_URL + '/application/products/', request);
-
     if (!token) {
       agent.add("You are not logged in. Would you like to log in now?");
       // TODO: show login prompt
     }
+
+    const serverReturn = await fetch(ENDPOINT_URL + '/application/products/', request);
 
     if (!serverReturn.ok) {
       agent.add("Sorry, there was a problem getting your cart.");
