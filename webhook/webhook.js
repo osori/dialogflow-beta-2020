@@ -18,8 +18,6 @@ ENDPOINT_URL = "http://127.0.0.1:5000"
 ENDPOINT_URL = "https://mysqlcs639.cs.wisc.edu"
 }
 
-
-
 async function getToken () {
   let request = {
     method: 'GET',
@@ -63,6 +61,14 @@ async function navigateTo (page) {
   return serverResponse;
 }
 
+function humanizeList(list) {
+  if (list.length > 2) {
+    return list.splice(0, list.length-1).join(', ') + ", and " + list[0];
+  } else {
+    return list.join(' and ');
+  }
+}
+
 app.get('/', (req, res) => res.send('online'))
 app.post('/', express.json(), (req, res) => {
   const agent = new WebhookClient({ request: req, response: res })
@@ -99,8 +105,8 @@ app.post('/', express.json(), (req, res) => {
     const serverReturn = await fetch(ENDPOINT_URL + '/categories', request);
 
     if (!serverReturn.ok) {
-      agent.add("Sorry, there was a problem getting the list of categories.")
-      throw "Error while getting category list"
+      agent.add("Sorry, there was a problem getting the list of categories.");
+      return;
     }  
 
     const serverResponse = await serverReturn.json()
@@ -111,11 +117,35 @@ app.post('/', express.json(), (req, res) => {
     agent.add(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
   }
 
+  async function getTagListOfCategory () {
+    category = agent.parameters.category.toLowerCase();
+    let request = {
+      method: 'GET',
+      redirect: 'follow'
+    }
+
+    const serverReturn = await fetch(ENDPOINT_URL + '/categories/' + category + '/tags', request);
+
+    if (!serverReturn.ok) {
+      agent.add("Uh-oh, we currently don't have items in the " + category + " category.");
+      await getCategoryList();
+      return;
+    }  
+
+    const serverResponse = await serverReturn.json()
+    let tags = serverResponse.tags;
+
+    agent.add("There are " + tags.length + " kinds of tags for " + category + ": ");
+    // use the Oxford Comma style to join tags
+    agent.add(humanizeList(tags) + ".");
+  }
+
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   // You will need to declare this `Login` content in DialogFlow to make this work
   intentMap.set('LOGIN', login) 
   intentMap.set('CATEGORY_LIST', getCategoryList) 
+  intentMap.set('CATEGORY_DETAIL_TAGS', getTagListOfCategory)
   agent.handleRequest(intentMap)
 })
 
