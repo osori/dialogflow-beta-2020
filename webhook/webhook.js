@@ -112,7 +112,7 @@ app.post('/', express.json(), (req, res) => {
     const serverResponse = await serverReturn.json()
     let categories = serverResponse.categories;
 
-    agent.add("We currently offer " + categories.length + " types of items: ");
+    agent.add("We currently offer " + categories.length + " categories: ");
     // use the Oxford Comma style to join categories
     agent.add(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
   }
@@ -135,7 +135,7 @@ app.post('/', express.json(), (req, res) => {
     const serverResponse = await serverReturn.json()
     let tags = serverResponse.tags;
 
-    agent.add("There are " + tags.length + " kinds of tags for " + category + ": ");
+    agent.add("There are " + tags.length + " tags for " + category + ": ");
     // use the Oxford Comma style to join tags
     agent.add(humanizeList(tags) + ".");
   }
