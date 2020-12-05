@@ -179,6 +179,19 @@ app.post('/', express.json(), (req, res) => {
     agent.add("That is a total of $" + totalPrice + ".")
   }
 
+  async function showProductList () {
+    // category: required intent
+    category = agent.parameters.category
+
+    if (!token) {
+      agent.add("You are not logged in. Would you like to log in now?");
+      // TODO: show login prompt
+    }
+
+    await navigateTo("/" + category);
+    agent.add("Here are items in " + category + ".");
+  }
+
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   // You will need to declare this `Login` content in DialogFlow to make this work
@@ -186,6 +199,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CATEGORY_LIST', getCategoryList) 
   intentMap.set('CATEGORY_DETAIL_TAGS', getTagListOfCategory)
   intentMap.set('CART_VIEW', getCartItemList)
+  intentMap.set('PRODUCT_LIST', showProductList)
   agent.handleRequest(intentMap)
 })
 
