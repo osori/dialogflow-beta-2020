@@ -140,12 +140,44 @@ app.post('/', express.json(), (req, res) => {
     agent.add(humanizeList(tags) + ".");
   }
 
+  async function getCartItemList () {
+    let request = {
+      method: 'GET',
+      headers: {'x-access-token': token },
+      redirect: 'follow'
+    }
+
+    const serverReturn = await fetch(ENDPOINT_URL + '/application/products/', request);
+
+    if (!token) {
+      agent.add("You are not logged in. Would you like to log in now?");
+      // TODO: show login prompt
+    }
+
+    if (!serverReturn.ok) {
+      agent.add("Sorry, there was a problem getting your cart.");
+      let s = await serverReturn.json();
+      agent.add(s);
+      return;
+    }  
+
+    const serverResponse = await serverReturn.json()
+    let products = serverResponse.products;
+
+    agent.add("There are " + products.length + " products in your cart: ");
+    // use the Oxford Comma style to join tags
+    products.forEach( (item, idx) => {
+      agent.add(idx + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
+    })
+  }
+
   let intentMap = new Map()
   intentMap.set('Default Welcome Intent', welcome)
   // You will need to declare this `Login` content in DialogFlow to make this work
   intentMap.set('LOGIN', login) 
   intentMap.set('CATEGORY_LIST', getCategoryList) 
   intentMap.set('CATEGORY_DETAIL_TAGS', getTagListOfCategory)
+  intentMap.set('CART_VIEW', getCartItemList)
   agent.handleRequest(intentMap)
 })
 
