@@ -356,7 +356,24 @@ app.post('/', express.json(), (req, res) => {
     }
 
     await navigateTo('/cart-review');
-    agent.add('Taking you to cart review...')
+    agent.add('Here are items in your cart. Now, would you like to place an order?')
+
+  }
+
+  async function confirmCart() {
+    const productContext = agent.context.get('cart-review')
+
+    if (!token) {
+      alertUserNotLoggedIn(); return;
+    }
+
+    if (!productContext) {
+      reviewCart();
+      return;
+    }
+
+    await navigateTo('/cart-confirmed');
+    agent.add('Awesome, your order has been placed. Thank you for shopping at WiscShop!')
 
   }
 
@@ -379,6 +396,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CART_ADD', addToCart)
   intentMap.set('CART_DELETE', deleteFromCart)
   intentMap.set('CART_REVIEW', reviewCart)
+  intentMap.set('CART_CONFIRM', confirmCart)
   agent.handleRequest(intentMap)
 })
 
