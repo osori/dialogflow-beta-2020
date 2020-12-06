@@ -60,6 +60,41 @@ async function navigateTo (page) {
   return serverResponse;
 }
 
+async function clearMessages(){
+  let request = {
+    method: 'DELETE',
+    headers: {'Content-Type': 'application/json',
+              'x-access-token': token },
+    redirect: 'follow'
+  }
+  const serverReturn = await fetch(ENDPOINT_URL + '/application/messages', request);
+
+  if (!serverReturn.ok) {
+    throw "Error while clearing messages"
+  }
+
+  return;
+}
+
+async function addMessage(text, isUser) {
+  let request = {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json',
+              'x-access-token': token },
+    body: JSON.stringify({ isUser: isUser,
+                           text: text,
+                           date: new Date().toISOString()}),
+    redirect: 'follow'
+  }
+  const serverReturn = await fetch(ENDPOINT_URL + '/application/messages', request);
+
+  if (!serverReturn.ok) {
+    throw "Error while adding a message"
+  }
+
+  return;
+}
+
 async function getProductByName(productName) {
   let request = {
     method: 'GET',
@@ -133,7 +168,8 @@ app.post('/', express.json(), (req, res) => {
     }
 
     // login success
-    agent.add("Welcome to WiscShop, " + username + "!");
+    await clearMessages();
+    addAgentMessage("Welcome to WiscShop, " + username + "!")
   }
 
   async function getCategoryList () {
@@ -145,16 +181,16 @@ app.post('/', express.json(), (req, res) => {
     const serverReturn = await fetch(ENDPOINT_URL + '/categories', request);
 
     if (!serverReturn.ok) {
-      agent.add("Sorry, there was a problem getting the list of categories.");
+      addAgentMessage("Sorry, there was a problem getting the list of categories.");
       return;
     }  
 
     const serverResponse = await serverReturn.json()
     let categories = serverResponse.categories;
 
-    agent.add("We currently offer " + categories.length + " categories: ");
+    addAgentMessage("We currently offer " + categories.length + " categories: ");
     // use the Oxford Comma style to join categories
-    agent.add(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
+    addAgentMessage(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
   }
 
   async function getTagListOfCategory () {
@@ -167,7 +203,7 @@ app.post('/', express.json(), (req, res) => {
     const serverReturn = await fetch(ENDPOINT_URL + '/categories/' + category + '/tags', request);
 
     if (!serverReturn.ok) {
-      agent.add("Uh-oh, we currently don't have items in the " + category + " category.");
+      addAgentMessage("Uh-oh, we currently don't have items in the " + category + " category.");
       await getCategoryList();
       return;
     }  
@@ -175,9 +211,9 @@ app.post('/', express.json(), (req, res) => {
     const serverResponse = await serverReturn.json()
     let tags = serverResponse.tags;
 
-    agent.add("There are " + tags.length + " tags for " + category + ": ");
+    addAgentMessage("There are " + tags.length + " tags for " + category + ": ");
     // use the Oxford Comma style to join tags
-    agent.add(humanizeList(tags) + ".");
+    addAgentMessage(humanizeList(tags) + ".");
   }
 
   async function getCartItemList () {
@@ -194,7 +230,7 @@ app.post('/', express.json(), (req, res) => {
     const serverReturn = await fetch(ENDPOINT_URL + '/application/products/', request);
 
     if (!serverReturn.ok) {
-      agent.add("Sorry, there was a problem getting your cart.");
+      addAgentMessage("Sorry, there was a problem getting your cart.");
       let s = await serverReturn.json();
       return;
     }  
@@ -203,18 +239,18 @@ app.post('/', express.json(), (req, res) => {
     let products = serverResponse.products;
 
     if (!products.length) {
-      agent.add("Your cart is empty.");
+      addAgentMessage("Your cart is empty.");
       return;
     }
 
-    agent.add("There are " + products.length + " products in your cart: ");
+    addAgentMessage("There are " + products.length + " products in your cart: ");
     // use the Oxford Comma style to join tags
     let totalPrice = 0;
     products.forEach( (item, idx) => {
-      agent.add(idx+1 + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
+      addAgentMessage(idx+1 + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
       totalPrice += item.price
     })
-    agent.add("That is a total of $" + totalPrice + ".")
+    addAgentMessage("That is a total of $" + totalPrice + ".")
   }
 
   async function showProductList () {
@@ -226,7 +262,7 @@ app.post('/', express.json(), (req, res) => {
     }
 
     await navigateTo("/" + category);
-    agent.add("Here are items in " + category + ".");
+    addAgentMessage("Here are items in " + category + ".");
   }
 
   async function showProductDetail () {
@@ -240,8 +276,8 @@ app.post('/', express.json(), (req, res) => {
     let product = await getProductByName(productName);
 
     await navigateTo("/" + product.category + "/products/" + product.id);
-    agent.add("Here you go, " + product.name + "!");
-    agent.add("The price is $" + product.price + ".");
+    addAgentMessage("Here you go, " + product.name + "!");
+    addAgentMessage("The price is $" + product.price + ".");
     agent.add(new Suggestion("Reviews"));
     agent.add(new Suggestion("Add to Cart"));
   }
@@ -253,7 +289,7 @@ app.post('/', express.json(), (req, res) => {
       if (agent.parameters.productname) {
         product = await getProductByName(agent.parameters.productname)
       } else {
-        agent.add("Which item are you looking for?")
+        addAgentMessage("Which item are you looking for?")
       }
     } else {
       product = await getProductByName(productContext.parameters.productname)
@@ -268,11 +304,11 @@ app.post('/', express.json(), (req, res) => {
     const reviews = await getProductReviews(product.id)
     const averageRatings = reviews.reduce( (stars, next) => stars + next.stars, 0) / reviews.length
 
-    agent.add("The average ratings for " + product.name + " is " + averageRatings + ". Here are the reviews: ");
+    addAgentMessage("The average ratings for " + product.name + " is " + averageRatings + ". Here are the reviews: ");
 
     reviews.forEach( (review, idx) => {
-      agent.add(idx+1 + ". " + review.title + " (" + review.stars + " stars) says,")
-      agent.add('"' + review.text + '"')
+      addAgentMessage(idx+1 + ". " + review.title + " (" + review.stars + " stars) says,")
+      addAgentMessage('"' + review.text + '"')
     })
 
     agent.add(new Suggestion("Add to cart"));
@@ -291,12 +327,12 @@ app.post('/', express.json(), (req, res) => {
       const serverReturn = await fetch(ENDPOINT_URL + '/application/tags/' + tag, request)
 
       if (!serverReturn.ok) {
-        agent.add("Sorry, there was a problem while filtering products");
+        addAgentMessage("Sorry, there was a problem while filtering products");
         return;
       }  
     }
 
-    agent.add("Showing items with " + humanizeList(tags) + " tags...")
+    addAgentMessage("Showing items with " + humanizeList(tags) + " tags...")
 
   }
 
@@ -330,11 +366,11 @@ app.post('/', express.json(), (req, res) => {
         const serverReturn = await fetch(ENDPOINT_URL + '/application/products/' + product.id, request)
   
         if (!serverReturn.ok) {
-          agent.add("Sorry, there was a problem while adding the item to your cart");
+          addAgentMessage("Sorry, there was a problem while adding the item to your cart");
           return;
         } 
       } 
-      agent.add(product.name + " was successfully added to your cart!");
+      addAgentMessage(product.name + " was successfully added to your cart!");
       if (productContext) {
         agent.add(new Suggestion("Go to homepage"))
       }
@@ -360,10 +396,10 @@ app.post('/', express.json(), (req, res) => {
       const serverReturn = await fetch(ENDPOINT_URL + '/application/products/' + product.id, request)
 
       if (!serverReturn.ok) {
-        agent.add("Sorry, there was a problem while deleting the item from your cart");
+        addAgentMessage("Sorry, there was a problem while deleting the item from your cart");
         return;
       } 
-      agent.add(product.name + " was successfully deleted from your cart!");
+      addAgentMessage(product.name + " was successfully deleted from your cart!");
     }
 
   }
@@ -374,7 +410,7 @@ app.post('/', express.json(), (req, res) => {
     }
 
     await navigateTo('/cart-review');
-    agent.add('Here are items in your cart. Now, would you like to place an order?')
+    addAgentMessage('Here are items in your cart. Now, would you like to place an order?')
 
   }
 
@@ -391,7 +427,7 @@ app.post('/', express.json(), (req, res) => {
     }
 
     await navigateTo('/cart-confirmed');
-    agent.add('Awesome, your order has been placed. Thank you for shopping at WiscShop!')
+    addAgentMessage('Awesome, your order has been placed. Thank you for shopping at WiscShop!')
 
   }
 
@@ -418,13 +454,20 @@ app.post('/', express.json(), (req, res) => {
       await navigateTo('/signUp')
     }
 
-    agent.add('Sure!')
+    addAgentMessage('Sure!')
 
   }
 
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
     // TODO: show login prompt
+  }
+
+  async function addAgentMessage(text) {
+    agent.add(text);
+    addMessage(text, 0);
+
+    return;
   }
 
   let intentMap = new Map()
@@ -437,7 +480,6 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('PRODUCT_LIST', showProductList)
   intentMap.set('PRODUCT_DETAIL', showProductDetail)
   intentMap.set('PRODUCT_DETAIL__ADD_TO_CART', addToCart)
-  intentMap.set('PRODUCT_DETAIL__RETURN', goBackToPrevItem)
   intentMap.set('PRODUCT_REVIEWS', showProductReviews)
   intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
   intentMap.set('CART_ADD', addToCart)
@@ -445,6 +487,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CART_REVIEW', reviewCart)
   intentMap.set('CART_CONFIRM', confirmCart)
   intentMap.set('APPLICATION_NAVIGATE', navigateApp)
+  addMessage(agent.query, 1); // show user utterance in the GUI
   agent.handleRequest(intentMap)
 })
 
