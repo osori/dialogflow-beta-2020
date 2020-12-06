@@ -274,6 +274,8 @@ app.post('/', express.json(), (req, res) => {
       agent.add(idx+1 + ". " + review.title + " (" + review.stars + " stars) says,")
       agent.add('"' + review.text + '"')
     })
+
+    agent.add(new Suggestion("Add to cart"));
   }
 
   async function filterByTags() {
@@ -333,6 +335,9 @@ app.post('/', express.json(), (req, res) => {
         } 
       } 
       agent.add(product.name + " was successfully added to your cart!");
+      if (productContext) {
+        agent.add(new Suggestion("Go to homepage"))
+      }
     }
 
   }
@@ -390,6 +395,13 @@ app.post('/', express.json(), (req, res) => {
 
   }
 
+  async function goBackToPrevItem() {
+    const productContext = agent.context.get('product-chosen');
+    const product = await getProductByName(productContext.parameters.productname);
+
+    navigateTo("/" + product.category + "/products/" + product.id)
+  }
+
   async function navigateApp() {
     const page = agent.parameters.page
 
@@ -425,6 +437,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('PRODUCT_LIST', showProductList)
   intentMap.set('PRODUCT_DETAIL', showProductDetail)
   intentMap.set('PRODUCT_DETAIL__ADD_TO_CART', addToCart)
+  intentMap.set('PRODUCT_DETAIL__RETURN', goBackToPrevItem)
   intentMap.set('PRODUCT_REVIEWS', showProductReviews)
   intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
   intentMap.set('CART_ADD', addToCart)
