@@ -83,6 +83,25 @@ async function getProductByName(productName) {
 
 }
 
+async function getProductReviews(productId) {
+  let request = {
+    method: 'GET',
+    redirect: 'follow'
+  }
+
+  const serverReturn = await fetch(ENDPOINT_URL + '/products/' + productId + '/reviews', request);
+
+  if (!serverReturn.ok) {
+    throw "Error while getting product reviews from server"
+  }
+
+  const serverResponse = await serverReturn.json()
+
+  const reviews = serverResponse.reviews;
+
+  return reviews
+}
+
 function humanizeList(list) {
   if (list.length > 2) {
     return list.splice(0, list.length-1).join(', ') + ", and " + list[0];
@@ -214,7 +233,7 @@ app.post('/', express.json(), (req, res) => {
 
   async function showProductDetail () {
     // category: required intent
-    productName = agent.parameters.productname
+    const productName = agent.parameters.productname
 
     if (!token) {
       alertUserNotLoggedIn(); return;
@@ -226,6 +245,29 @@ app.post('/', express.json(), (req, res) => {
     agent.add("Here you go, " + product.name + "!");
   }
 
+  async function showProductReviews () {
+    const productContext = agent.context.get('product-chosen')
+    if (!productContext) {
+      // TODO: product select prompt
+    }
+
+    if (!token) {
+      alertUserNotLoggedIn(); return;
+    }
+
+    console.log(productContext)
+
+    const product = await getProductByName(productContext.parameters.productname)
+    const reviews = await getProductReviews(product.id)
+
+    agent.add("Here are the reviews of " + product.name + ".");
+
+    reviews.forEach( (review, idx) => {
+      agent.add(idx+1 + ". " + review.title + " (" + review.stars + " stars) says,")
+      agent.add('"' + review.text + '"')
+    })
+  }
+  
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
     // TODO: show login prompt
@@ -240,6 +282,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CART_VIEW', getCartItemList)
   intentMap.set('PRODUCT_LIST', showProductList)
   intentMap.set('PRODUCT_DETAIL', showProductDetail)
+  intentMap.set('PRODUCT_REVIEWS', showProductReviews)
   agent.handleRequest(intentMap)
 })
 
