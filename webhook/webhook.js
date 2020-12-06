@@ -268,6 +268,28 @@ app.post('/', express.json(), (req, res) => {
       agent.add('"' + review.text + '"')
     })
   }
+
+  async function filterByTags() {
+    const tags = agent.parameters.tag;
+
+    let request = {
+      method: 'POST',
+      headers: {'x-access-token': token },
+      redirect: 'follow'
+    }
+
+    for await (const tag of tags) {
+      const serverReturn = await fetch(ENDPOINT_URL + '/application/tags/' + tag, request)
+
+      if (!serverReturn.ok) {
+        agent.add("Sorry, there was a problem while filtering products");
+        return;
+      }  
+    }
+
+    agent.add("Showing items with " + humanizeList(tags) + " tags...")
+
+  }
   
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
@@ -284,6 +306,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('PRODUCT_LIST', showProductList)
   intentMap.set('PRODUCT_DETAIL', showProductDetail)
   intentMap.set('PRODUCT_REVIEWS', showProductReviews)
+  intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
   agent.handleRequest(intentMap)
 })
 
