@@ -49,7 +49,6 @@ async function navigateTo (page) {
                            back: false}),
     redirect: 'follow'
   }
-
   const serverReturn = await fetch(ENDPOINT_URL + '/application', request);
 
   if (!serverReturn.ok) {
@@ -377,6 +376,27 @@ app.post('/', express.json(), (req, res) => {
 
   }
 
+  async function navigateApp() {
+    const page = agent.parameters.page
+    agent.add(page)
+
+    if (page === "home") {
+     await navigateTo('/')
+    } else if (page === "cart") {
+      if (!token) {
+        alertUserNotLoggedIn(); return;
+      }
+      await navigateTo('/cart')
+    } else if (page === "signIn") {
+      await navigateTo('/signIn')
+    } else if (page === "signUp") {
+      await navigateTo('/signUp')
+    }
+
+    agent.add('navigate!')
+
+  }
+
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
     // TODO: show login prompt
@@ -397,6 +417,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CART_DELETE', deleteFromCart)
   intentMap.set('CART_REVIEW', reviewCart)
   intentMap.set('CART_CONFIRM', confirmCart)
+  intentMap.set('APPLICATION_NAVIGATE', navigateApp)
   agent.handleRequest(intentMap)
 })
 
