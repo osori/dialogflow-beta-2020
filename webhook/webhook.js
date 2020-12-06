@@ -259,8 +259,9 @@ app.post('/', express.json(), (req, res) => {
 
     const product = await getProductByName(productContext.parameters.productname)
     const reviews = await getProductReviews(product.id)
+    const averageRatings = reviews.reduce( (stars, next) => stars + next.stars, 0) / reviews.length
 
-    agent.add("Here are the reviews of " + product.name + ".");
+    agent.add("The average ratings for " + product.name + " is " + averageRatings + ". Here are the reviews: ");
 
     reviews.forEach( (review, idx) => {
       agent.add(idx+1 + ". " + review.title + " (" + review.stars + " stars) says,")
