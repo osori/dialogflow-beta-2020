@@ -1,5 +1,5 @@
 const express = require('express')
-const { WebhookClient } = require('dialogflow-fulfillment')
+const { WebhookClient, Suggestion } = require('dialogflow-fulfillment')
 const app = express()
 const fetch = require('node-fetch')
 const base64 = require('base-64')
@@ -196,7 +196,6 @@ app.post('/', express.json(), (req, res) => {
     if (!serverReturn.ok) {
       agent.add("Sorry, there was a problem getting your cart.");
       let s = await serverReturn.json();
-      agent.add(s);
       return;
     }  
 
@@ -212,7 +211,7 @@ app.post('/', express.json(), (req, res) => {
     // use the Oxford Comma style to join tags
     let totalPrice = 0;
     products.forEach( (item, idx) => {
-      agent.add(idx + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
+      agent.add(idx+1 + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
       totalPrice += item.price
     })
     agent.add("That is a total of $" + totalPrice + ".")
@@ -242,12 +241,22 @@ app.post('/', express.json(), (req, res) => {
 
     await navigateTo("/" + product.category + "/products/" + product.id);
     agent.add("Here you go, " + product.name + "!");
+    agent.add("The price is $" + product.price + ".");
+    agent.add(new Suggestion("Reviews"));
+    agent.add(new Suggestion("Add to Cart"));
   }
 
   async function showProductReviews () {
     const productContext = agent.context.get('product-chosen')
+    let product;
     if (!productContext) {
-      // TODO: product select prompt
+      if (agent.parameters.productname) {
+        product = await getProductByName(agent.parameters.productname)
+      } else {
+        agent.add("Which item are you looking for?")
+      }
+    } else {
+      product = await getProductByName(productContext.parameters.productname)
     }
 
     if (!token) {
@@ -256,7 +265,6 @@ app.post('/', express.json(), (req, res) => {
 
     console.log(productContext)
 
-    const product = await getProductByName(productContext.parameters.productname)
     const reviews = await getProductReviews(product.id)
     const averageRatings = reviews.reduce( (stars, next) => stars + next.stars, 0) / reviews.length
 
@@ -291,7 +299,13 @@ app.post('/', express.json(), (req, res) => {
   }
 
   async function addToCart() {
-    const productNameList = agent.parameters.productname
+    const productContext = agent.context.get('product-chosen');
+    let productNameList;
+    if (productContext) {
+      productNameList = [productContext.parameters.productname]
+    } else {
+      productNameList = agent.parameters.productname
+    }
 
     let quantity = agent.parameters.quantity
     if (!quantity) {
@@ -378,7 +392,6 @@ app.post('/', express.json(), (req, res) => {
 
   async function navigateApp() {
     const page = agent.parameters.page
-    agent.add(page)
 
     if (page === "home") {
      await navigateTo('/')
@@ -393,7 +406,7 @@ app.post('/', express.json(), (req, res) => {
       await navigateTo('/signUp')
     }
 
-    agent.add('navigate!')
+    agent.add('Sure!')
 
   }
 
@@ -411,6 +424,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CART_VIEW', getCartItemList)
   intentMap.set('PRODUCT_LIST', showProductList)
   intentMap.set('PRODUCT_DETAIL', showProductDetail)
+  intentMap.set('PRODUCT_DETAIL__ADD_TO_CART', addToCart)
   intentMap.set('PRODUCT_REVIEWS', showProductReviews)
   intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
   intentMap.set('CART_ADD', addToCart)
