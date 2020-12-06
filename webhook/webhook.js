@@ -350,6 +350,16 @@ app.post('/', express.json(), (req, res) => {
 
   }
 
+  async function reviewCart() {
+    if (!token) {
+      alertUserNotLoggedIn(); return;
+    }
+
+    await navigateTo('/cart-review');
+    agent.add('Taking you to cart review...')
+
+  }
+
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
     // TODO: show login prompt
@@ -368,6 +378,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
   intentMap.set('CART_ADD', addToCart)
   intentMap.set('CART_DELETE', deleteFromCart)
+  intentMap.set('CART_REVIEW', reviewCart)
   agent.handleRequest(intentMap)
 })
 
