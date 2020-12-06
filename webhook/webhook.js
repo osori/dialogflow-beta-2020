@@ -324,6 +324,32 @@ app.post('/', express.json(), (req, res) => {
 
   }
   
+  async function deleteFromCart() {
+    const productNameList = agent.parameters.productname
+
+    if (!token) {
+      alertUserNotLoggedIn(); return;
+    }
+
+    let request = {
+      method: 'DELETE',
+      headers: {'x-access-token': token },
+      redirect: 'follow'
+    }
+
+    for await (const productName of productNameList) {
+      const product = await getProductByName(productName)
+      const serverReturn = await fetch(ENDPOINT_URL + '/application/products/' + product.id, request)
+
+      if (!serverReturn.ok) {
+        agent.add("Sorry, there was a problem while deleting the item from your cart");
+        return;
+      } 
+      agent.add(product.name + " was successfully deleted from your cart!");
+    }
+
+  }
+
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
     // TODO: show login prompt
@@ -341,6 +367,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('PRODUCT_REVIEWS', showProductReviews)
   intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
   intentMap.set('CART_ADD', addToCart)
+  intentMap.set('CART_DELETE', deleteFromCart)
   agent.handleRequest(intentMap)
 })
 
