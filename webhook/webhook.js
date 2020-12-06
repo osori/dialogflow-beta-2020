@@ -61,6 +61,28 @@ async function navigateTo (page) {
   return serverResponse;
 }
 
+async function getProductByName(productName) {
+  let request = {
+    method: 'GET',
+    redirect: 'follow'
+  }
+
+  const serverReturn = await fetch(ENDPOINT_URL + '/products', request);
+
+  if (!serverReturn.ok) {
+    throw "Error while getting products list from server"
+  }
+
+  const serverResponse = await serverReturn.json()
+
+  const productsDict = serverResponse.products;
+
+  item = productsDict.find( ({name}) => name === productName );
+
+  return item
+
+}
+
 function humanizeList(list) {
   if (list.length > 2) {
     return list.splice(0, list.length-1).join(', ') + ", and " + list[0];
@@ -148,8 +170,7 @@ app.post('/', express.json(), (req, res) => {
     }
 
     if (!token) {
-      agent.add("You are not logged in. Would you like to log in now?");
-      // TODO: show login prompt
+      alertUserNotLoggedIn(); return;
     }
 
     const serverReturn = await fetch(ENDPOINT_URL + '/application/products/', request);
@@ -184,12 +205,30 @@ app.post('/', express.json(), (req, res) => {
     category = agent.parameters.category
 
     if (!token) {
-      agent.add("You are not logged in. Would you like to log in now?");
-      // TODO: show login prompt
+      alertUserNotLoggedIn(); return;
     }
 
     await navigateTo("/" + category);
     agent.add("Here are items in " + category + ".");
+  }
+
+  async function showProductDetail () {
+    // category: required intent
+    productName = agent.parameters.productname
+
+    if (!token) {
+      alertUserNotLoggedIn(); return;
+    }
+
+    let product = await getProductByName(productName);
+
+    await navigateTo("/" + product.category + "/products/" + product.id);
+    agent.add("Here you go, " + product.name + "!");
+  }
+
+  function alertUserNotLoggedIn () {
+    agent.add("You are not logged in. Would you like to log in now?");
+    // TODO: show login prompt
   }
 
   let intentMap = new Map()
@@ -200,6 +239,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('CATEGORY_DETAIL_TAGS', getTagListOfCategory)
   intentMap.set('CART_VIEW', getCartItemList)
   intentMap.set('PRODUCT_LIST', showProductList)
+  intentMap.set('PRODUCT_DETAIL', showProductDetail)
   agent.handleRequest(intentMap)
 })
 
