@@ -290,6 +290,39 @@ app.post('/', express.json(), (req, res) => {
     agent.add("Showing items with " + humanizeList(tags) + " tags...")
 
   }
+
+  async function addToCart() {
+    const productNameList = agent.parameters.productname
+
+    let quantity = agent.parameters.quantity
+    if (!quantity) {
+      quantity = 1
+    }
+
+    if (!token) {
+      alertUserNotLoggedIn(); return;
+    }
+
+    let request = {
+      method: 'POST',
+      headers: {'x-access-token': token },
+      redirect: 'follow'
+    }
+
+    for await (const productName of productNameList) {
+      const product = await getProductByName(productName)
+      for (let i=0; i < quantity; i++) {
+        const serverReturn = await fetch(ENDPOINT_URL + '/application/products/' + product.id, request)
+  
+        if (!serverReturn.ok) {
+          agent.add("Sorry, there was a problem while adding the item to your cart");
+          return;
+        } 
+      } 
+      agent.add(product.name + " was successfully added to your cart!");
+    }
+
+  }
   
   function alertUserNotLoggedIn () {
     agent.add("You are not logged in. Would you like to log in now?");
@@ -307,6 +340,7 @@ app.post('/', express.json(), (req, res) => {
   intentMap.set('PRODUCT_DETAIL', showProductDetail)
   intentMap.set('PRODUCT_REVIEWS', showProductReviews)
   intentMap.set('PRODUCT_LIST_FILTER_BY_TAG', filterByTags)
+  intentMap.set('CART_ADD', addToCart)
   agent.handleRequest(intentMap)
 })
 
