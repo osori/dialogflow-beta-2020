@@ -175,6 +175,7 @@ app.post('/', express.json(), (req, res) => {
   async function getCategoryList () {
     let request = {
       method: 'GET',
+      headers: {"x-access-token": token},
       redirect: 'follow'
     }
 
@@ -187,16 +188,20 @@ app.post('/', express.json(), (req, res) => {
 
     const serverResponse = await serverReturn.json()
     let categories = serverResponse.categories;
+    let message = "We currently offer " + categories.length + " categories: \n"
+    message += categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + "."
 
-    addAgentMessage("We currently offer " + categories.length + " categories: ");
-    // use the Oxford Comma style to join categories
-    addAgentMessage(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
+    // await addAgentMessage("We currently offer " + categories.length + " categories: ");
+    // // use the Oxford Comma style to join categories
+    // addAgentMessage(categories.splice(0, categories.length-1).join(', ') + ", and " + categories[0] + ".");
+    addAgentMessage(message);
   }
 
   async function getTagListOfCategory () {
     category = agent.parameters.category.toLowerCase();
     let request = {
       method: 'GET',
+      headers: {"x-access-token": token},
       redirect: 'follow'
     }
 
@@ -210,10 +215,10 @@ app.post('/', express.json(), (req, res) => {
 
     const serverResponse = await serverReturn.json()
     let tags = serverResponse.tags;
-
-    addAgentMessage("There are " + tags.length + " tags for " + category + ": ");
-    // use the Oxford Comma style to join tags
-    addAgentMessage(humanizeList(tags) + ".");
+    let message = "There are " + tags.length + " tags for " + category + ": \n"
+    message += humanizeList(tags) + "."
+    addAgentMessage(message);
+    return;
   }
 
   async function getCartItemList () {
@@ -243,14 +248,23 @@ app.post('/', express.json(), (req, res) => {
       return;
     }
 
-    addAgentMessage("There are " + products.length + " products in your cart: ");
+    let message = "There are " + products.length + " products in your cart: ";
+    // await addAgentMessage("There are " + products.length + " products in your cart: ");
     // use the Oxford Comma style to join tags
     let totalPrice = 0;
-    products.forEach( (item, idx) => {
-      addAgentMessage(idx+1 + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
-      totalPrice += item.price
-    })
-    addAgentMessage("That is a total of $" + totalPrice + ".")
+    productList = []
+    for await (const item of products) {
+      // await addAgentMessage(idx+1 + ". " + item.count + " of " + item.name + " ($" + item.price + ")")
+      // message += "\n" + idx+1 + ". " + item.count + " of " + item.name + " ($" + item.price + ")"
+      humanReadableProductText = item.count + " of " + item.name + " ($" + item.price + ")"
+      productList.push(humanReadableProductText);
+      totalPrice += item.price;
+    }
+    message += "\n" + humanizeList(productList) + ".";
+    // await addAgentMessage("That is a total of $" + totalPrice + ".")
+    message += "\n" + "That is a total of $" + totalPrice + "."
+    addAgentMessage(message)
+    return;
   }
 
   async function showProductList () {
@@ -275,11 +289,15 @@ app.post('/', express.json(), (req, res) => {
 
     let product = await getProductByName(productName);
 
-    await navigateTo("/" + product.category + "/products/" + product.id);
-    addAgentMessage("Here you go, " + product.name + "!");
-    addAgentMessage("The price is $" + product.price + ".");
+    navigateTo("/" + product.category + "/products/" + product.id);
+
+    let message = "Here you go, " + product.name + "! "
+    message += "The price is $" + product.price + "."
+    addAgentMessage(message);
+
     agent.add(new Suggestion("Reviews"));
     agent.add(new Suggestion("Add to Cart"));
+    return;
   }
 
   async function showProductReviews () {
@@ -304,12 +322,14 @@ app.post('/', express.json(), (req, res) => {
     const reviews = await getProductReviews(product.id)
     const averageRatings = reviews.reduce( (stars, next) => stars + next.stars, 0) / reviews.length
 
-    addAgentMessage("The average ratings for " + product.name + " is " + averageRatings + ". Here are the reviews: ");
+    await addAgentMessage("The average ratings for " + product.name + " is " + averageRatings + ". Here are the reviews: ");
 
+    let reviewMessage = ""
     reviews.forEach( (review, idx) => {
-      addAgentMessage(idx+1 + ". " + review.title + " (" + review.stars + " stars) says,")
-      addAgentMessage('"' + review.text + '"')
+      reviewMessage += idx+1 + ". " + review.title + " (" + review.stars + " stars) says,"
+      reviewMessage += '"' + review.text + '"'
     })
+    addAgentMessage(reviewMessage);
 
     agent.add(new Suggestion("Add to cart"));
   }
@@ -465,7 +485,7 @@ app.post('/', express.json(), (req, res) => {
 
   async function addAgentMessage(text) {
     agent.add(text);
-    addMessage(text, 0);
+    await addMessage(text, 0);
 
     return;
   }
